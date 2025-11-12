@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:football_news_flutter/screens/menu.dart';
+
 import 'package:flutter/material.dart';
 import 'package:football_news_flutter/widgets/left_drawer.dart';
 
@@ -12,7 +17,7 @@ class _NewsFormPageState extends State<NewsFormPage> {
   final _formKey = GlobalKey<FormState>();
 
   String _title = "";
-  String _content = "";
+  final String _content = "";
   String _category = "update";
   String _thumbnail = "";
   bool _isFeatured = false;
@@ -28,6 +33,7 @@ class _NewsFormPageState extends State<NewsFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       appBar: AppBar(
         title: const Center(child: Text('Add News Form')),
@@ -74,7 +80,7 @@ class _NewsFormPageState extends State<NewsFormPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  value: _category,
+                  initialValue: _category,
                   items: _categories
                       .map(
                         (cat) => DropdownMenuItem(
@@ -130,39 +136,41 @@ class _NewsFormPageState extends State<NewsFormPage> {
                     style: ButtonStyle(
                       backgroundColor: WidgetStateProperty.all(Colors.indigo),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text('Berita berhasil disimpan!'),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Judul: $_title'),
-                                    Text('Isi: $_content'),
-                                    Text('Kategori: $_category'),
-                                    Text('Thumbnail: $_thumbnail'),
-                                    Text(
-                                      'Unggulan: ${_isFeatured ? "Ya" : "Tidak"}',
-                                    ),
-                                  ],
+                        final response = await request.postJson(
+                          "http://localhost:8000/create-flutter/",
+                          jsonEncode({
+                            "title": _title,
+                            "content": _content,
+                            "thumbnail": _thumbnail,
+                            "category": _category,
+                            "is_featured": _isFeatured,
+                          }),
+                        );
+                        if (context.mounted) {
+                          if (response['status'] == 'success') {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("News successfully saved!"),
+                              ),
+                            );
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyHomePage(),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Something went wrong, please try again.",
                                 ),
                               ),
-                              actions: [
-                                TextButton(
-                                  child: const Text('OK'),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    _formKey.currentState!.reset();
-                                  },
-                                ),
-                              ],
                             );
-                          },
-                        );
+                          }
+                        }
                       }
                     },
                     child: const Text(
